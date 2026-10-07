@@ -1021,7 +1021,17 @@ class GifWriter {
 
 /* ───────────── 내보내기 ───────────── */
 let lastUrl = '';
+let lastBlob = null;
 let busy = false;
+// claude.ai 아티팩트 뷰어 안에서는 일반 다운로드 링크가 막혀 있어 뷰어의 저장 기능을 쓴다
+let viewerDownloads = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { viewerDownloads = d; }).catch(() => {});
+$('download').addEventListener('click', async e => {
+  if (!viewerDownloads || !lastBlob) return;
+  e.preventDefault();
+  try { await viewerDownloads.save({ filename: $('download').download, data: lastBlob }); setStatus('저장했어요.'); }
+  catch (err) { if (err && err.code !== 'declined') setStatus('여기서는 저장할 수 없어요. 이미지를 길게 누르거나 우클릭해서 저장하세요.'); }
+});
 async function exportGif() {
   if (busy) return;
   busy = true;
@@ -1050,6 +1060,7 @@ async function exportGif() {
     const blob = new Blob([gif.finish()], { type: 'image/gif' });
     if (lastUrl) URL.revokeObjectURL(lastUrl);
     lastUrl = URL.createObjectURL(blob);
+    lastBlob = blob;
     $('result-img').src = lastUrl;
     $('download').href = lastUrl;
     $('download').download = `umjjal-${tpl.id}.gif`;
